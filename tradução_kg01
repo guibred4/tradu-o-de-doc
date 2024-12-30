@@ -1,0 +1,90 @@
+import pandas as pd
+import asyncio
+import aiohttp
+import time
+
+# Nome do arquivo original (CSV) e o arquivo traduzido (Excel)
+arquivo_entrada = r'C:\Users\guilh\OneDrive\Desktop\Traduções py\rt_finanças.csv'
+arquivo_saida = r'C:\Users\guilh\OneDrive\Desktop\Traduções py\arquivo_traduzido.xlsx'
+
+# Função para traduzir em lote usando Google Translate API via Deep Translator
+async def traduzir_batch(valores, session):
+    try:
+        # Traduzir os valores em lote com a API do Google
+        url = "https://translation.googleapis.com/language/translate/v2"
+        params = {
+            'q': valores,
+            'target': 'pt',
+            'key': 'YOUR_GOOGLE_API_KEY'  # Substitua pela sua chave da API
+        }
+        
+        async with session.post(url, params=params) as response:
+            if response.status == 200:
+                result = await response.json()
+                return [item['translatedText'] for item in result['data']['translations']]
+            else:
+                print(f"Erro na tradução (status {response.status}): {valores}")
+                return valores
+    except Exception as e:
+        print(f"Erro ao traduzir em lote: {e}")
+        return valores
+
+# Função assíncrona para traduzir o DataFrame
+async def traduzir_dataframe(df):
+    async with aiohttp.ClientSession() as session:
+        tarefas = []  # Lista para armazenar tarefas de tradução
+        for coluna in df.select_dtypes(include=['object']):  # Para cada coluna de texto
+            valores = df[coluna].tolist()  # Obtemos os valores da coluna
+            # Dividir os valores em lotes menores
+            tamanho_lote = 10  # Por exemplo, traduzir 10 valores de cada vez
+            for i in range(0, len(valores), tamanho_lote):
+                lote = valores[i:i+tamanho_lote]  # Pega um lote de tamanho especificado
+                tarefas.append(traduzir_batch(lote, session))  # Adiciona a tarefa de tradução
+
+                # Pausa entre os lotes para evitar sobrecarga
+                await asyncio.sleep(2.0)  # Atraso de 2 segundos entre os lotes
+
+        # Executar todas as tarefas de tradução
+        resultados = await asyncio.gather(*tarefas)
+
+        # Substituir os valores no DataFrame
+        index = 0
+        for coluna in df.select_dtypes(include=['object']):
+            valores_traduzidos = []
+            for i in range(0, len(df[coluna]), tamanho_lote):
+                valores_traduzidos.extend(resultados[index])
+                index += 1
+            df[coluna] = valores_traduzidos
+
+        return df
+
+# Função principal
+def traduzir_arquivo():
+    # Ler o arquivo CSV
+    try:
+        df = pd.read_csv(arquivo_entrada, encoding='utf-8')  # Ajuste o encoding, se necessário
+        print(f"Arquivo carregado com sucesso: {arquivo_entrada}")
+    except FileNotFoundError:
+        print(f"Erro: O arquivo '{arquivo_entrada}' não foi encontrado.")
+        return
+
+    # Iniciar a tradução assíncrona
+    print("Iniciando a tradução do arquivo...")
+    try:
+        # Usar asyncio.run() para iniciar o loop de eventos
+        df_traduzido = asyncio.run(traduzir_dataframe(df))  # Traduz o DataFrame assíncronamente
+        print("Tradução concluída com sucesso.")
+    except Exception as e:
+        print(f"Erro durante a tradução: {e}")
+        return
+
+    # Salvar o DataFrame traduzido como Excel
+    try:
+        df_traduzido.to_excel(arquivo_saida, index=False)
+        print(f"Arquivo traduzido salvo com sucesso como: {arquivo_saida}")
+    except Exception as e:
+        print(f"Erro ao salvar o arquivo traduzido: {e}")
+
+# Executar a tradução do arquivo
+if __name__ == "__main__":
+    traduzir_arquivo()

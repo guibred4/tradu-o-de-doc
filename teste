@@ -1,0 +1,21 @@
+import aiohttp
+import asyncio
+
+async def teste_api_google():
+    url = "https://translation.googleapis.com/language/translate/v2"
+    texto_para_traduzir = ["Hello", "World"]
+    params = {
+        'q': texto_para_traduzir,
+        'target': 'pt',
+        'key': 'YOUR_GOOGLE_API_KEY'  # Substitua pela sua chave de API
+    }
+
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, params=params) as response:
+            if response.status == 200:
+                result = await response.json()
+                print("Tradução de teste:", result['data']['translations'])
+            else:
+                print(f"Erro na API: {response.status}, {await response.text()}")
+
+asyncio.run(teste_api_google())
