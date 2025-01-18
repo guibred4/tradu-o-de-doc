@@ -6,15 +6,3 @@ Este projeto automatiza a tradução de arquivos CSV para o idioma português, u
 
 1. Substitua a chave da API do Google Translate em `YOUR_GOOGLE_API_KEY`.
 2. Execute o script Python para traduzir o arquivo CSV.
-
-### Requisitos
-
-- Python 3.x
-- Bibliotecas Python:
-    - `pandas`
-    - `aiohttp`
-    - `asyncio`
-
-## Licença
-
-Este projeto é de código aberto. Veja o arquivo LICENSE para mais detalhes.
